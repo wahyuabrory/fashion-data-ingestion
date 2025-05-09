@@ -112,7 +112,6 @@ venv.bak/
 # Project specific
 google-sheets-api.json
 pg_config.json
-products.csv
 *.db
 *.sqlite3
 *.pkl
