@@ -184,7 +184,3 @@ After running the pipeline, data will be available in the following locations:
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
----
-
-Project developed as part of a data engineering demonstration.
