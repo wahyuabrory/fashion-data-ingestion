@@ -1,16 +1,121 @@
-Cara menjalankan skrip ETL pipeline.
-Cara menjalankan unit test pada skrip yang Anda buat.
-Cara menjalankan test coverage.
-URL Googlesheets.
+# DOKUMENTASI ETL PIPELINE FASHION DATA
 
-# Menjalankan skrip
+## CARA MENJALANKAN ETL PIPELINE
+
+### Menjalankan Pipeline Lengkap
+```
 python3 main.py
+```
 
-# Menjalankan unit test pada folder tests
+Pipeline akan mengambil data produk fashion dari website https://fashion-studio.dicoding.dev/, melakukan transformasi data, dan menyimpan ke CSV, PostgreSQL, dan Google Sheets.
+
+### Parameter Tambahan
+Pipeline juga dapat dijalankan dengan opsi tambahan:
+```
+python3 main.py --csv-only                    # Hanya menyimpan ke file CSV
+python3 main.py --output-path=fashion_data.csv # Menentukan nama file output
+python3 main.py --pg-config=pg_config.json    # Menyediakan konfigurasi PostgreSQL custom
+python3 main.py --gs-creds=credential_file.json # Menyediakan credentials Google Sheets custom
+```
+
+## STRUKTUR PROYEK
+```
+fashion-data-ingestion/
+├── main.py                   # Skrip utama untuk menjalankan pipeline
+├── utils/
+│   ├── extract.py            # Modul ekstraksi data dari website
+│   ├── transform.py          # Modul transformasi dan pembersihan data
+│   └── load.py               # Modul loading data ke berbagai tujuan
+├── tests/                    # Kumpulan tes untuk memastikan kualitas kode
+├── google-sheets-api.json    # Kredensial untuk Google Sheets API
+├── pg_config.json            # Konfigurasi koneksi PostgreSQL
+└── products.csv              # File output CSV
+```
+
+## CARA MENJALANKAN UNIT TEST
+
+### Menjalankan Semua Test
+```
 python3 -m pytest tests
+```
 
-# Menjalankan test coverage pada folder tests
+### Menjalankan Test Spesifik
+```
+python3 -m pytest tests/test_extract.py      # Test untuk modul ekstraksi
+python3 -m pytest tests/test_transform.py    # Test untuk modul transformasi
+python3 -m pytest tests/test_load.py         # Test untuk modul loading
+```
+
+### Menjalankan Test dengan Output Detail
+```
+python3 -m pytest tests -v
+```
+
+## CARA MENJALANKAN TEST COVERAGE
+
+### Menjalankan dan Melihat Coverage Basic
+```
 coverage run -m pytest tests
+coverage report
+```
 
-# Url Google Sheets:
-https://docs.google..com/sheets
+### Melihat Coverage dengan Detail Missing Lines
+```
+coverage report -m
+```
+
+### Menghasilkan Report HTML untuk Visualisasi Coverage
+```
+coverage html
+```
+Report HTML akan tersedia di direktori `htmlcov/`
+
+## RINGKASAN TEST COVERAGE
+
+### Statistik Coverage
+- Coverage Keseluruhan: 95%
+- Modul Extract: 91%
+- Modul Transform: 76%
+- Modul Load: 93%
+
+### File Pengujian
+- `test_extract.py`: Pengujian untuk ekstraksi data dari website fashion
+- `test_transform.py`: Pengujian untuk pembersihan dan transformasi data
+- `test_load.py`: Pengujian untuk loading data ke CSV, PostgreSQL, dan Google Sheets
+- `test_google_sheets.py`: Pengujian terfokus untuk fungsionalitas Google Sheets
+- `test_load_integration.py`: Pengujian integrasi untuk pipeline loading
+
+## FITUR UTAMA PIPELINE
+
+### Ekstraksi
+- Mengekstrak data produk fashion dari website dengan pagination yang tepat
+- Menangani error dan retry otomatis
+- Menambahkan timestamp untuk setiap data yang diekstrak
+
+### Transformasi
+- Konversi harga USD ke Rupiah (rate: 16.000)
+- Pembersihan nilai rating menjadi format float
+- Ekstraksi nilai numerik dari kolom Colors
+- Menghapus prefix dari kolom Size dan Gender
+- Validasi dan filter data yang tidak lengkap
+
+### Loading
+- Menyimpan data ke CSV dengan nama kolom yang konsisten
+- Menyimpan ke PostgreSQL dengan pembuatan tabel otomatis
+- Menyimpan ke Google Sheets dengan kemampuan menggunakan sheet yang sudah ada
+- Menangani error dari berbagai tujuan penyimpanan
+
+## AKSES HASIL
+
+### File CSV
+File CSV hasil tersimpan di `products.csv`
+
+### Database PostgreSQL
+Data tersimpan dalam database `fashion_db`, tabel `fashion_data`
+
+### URL Google Sheets
+```
+https://docs.google.com/spreadsheets/d/1Kl_AaRmwj06qkiPkNRrG0Ec21hCYSPa7sWz4DGfjijM
+```
+
+Catatan: URL Google Sheets bisa berubah jika aplikasi dijalankan ulang. URL terkini dapat dilihat pada output terminal setelah menjalankan `python3 main.py`.
