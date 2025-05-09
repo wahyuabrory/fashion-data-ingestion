@@ -20,7 +20,6 @@ def load_to_csv(df: pd.DataFrame, output_path: str = None) -> str:
     if output_path is None:
         output_path = "products.csv"
     
-    # Save to CSV
     df.to_csv(output_path, index=False)
     print(f"Data successfully saved to CSV: {output_path}")
     
@@ -48,28 +47,24 @@ def load_to_postgres(df: pd.DataFrame,
     try:
         print(f"Connecting to PostgreSQL at {host}:{port}, database: {database}")
         
-        # First check if database exists, if not create it
         conn = psycopg2.connect(
             host=host,
             user=user,
             password=password,
             port=port,
-            database="postgres"  # Connect to default postgres database first
+            database="postgres" 
         )
         conn.autocommit = True
         cur = conn.cursor()
         
-        # Check if our database exists
         cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (database,))
         if cur.fetchone() is None:
             print(f"Database {database} does not exist. Creating it.")
-            # Safe way to create database (handles spaces in name)
             cur.execute(f"CREATE DATABASE \"{database}\"")
         
         cur.close()
         conn.close()
         
-        # Now connect to our target database
         conn = psycopg2.connect(
             host=host,
             database=database,
@@ -80,7 +75,6 @@ def load_to_postgres(df: pd.DataFrame,
         conn.autocommit = True
         cur = conn.cursor()
         
-        # Create the table if it doesn't exist - IMPORTANT: Match column case with DataFrame!
         create_table_query = f"""
         CREATE TABLE IF NOT EXISTS {table_name} (
             id SERIAL PRIMARY KEY,
@@ -95,16 +89,13 @@ def load_to_postgres(df: pd.DataFrame,
         """
         cur.execute(create_table_query)
         
-        # Clear existing data
         cur.execute(f"TRUNCATE TABLE {table_name};")
         
-        # Insert data row by row - Use capitalized column names to match the DataFrame
         for _, row in df.iterrows():
             insert_query = f"""
             INSERT INTO {table_name} ("Title", "Price", "Rating", "Colors", "Size", "Gender", "timestamp")
             VALUES (%s, %s, %s, %s, %s, %s, %s);
             """
-            # Convert timestamp string to datetime if needed
             timestamp = row['timestamp']
             if isinstance(timestamp, str):
                 timestamp = pd.to_datetime(timestamp)
@@ -148,25 +139,19 @@ def load_to_google_sheets(df: pd.DataFrame,
         The ID of the Google Sheet
     """
     try:
-        # Define the scopes
         SCOPES = ['https://www.googleapis.com/auth/spreadsheets',
                   'https://www.googleapis.com/auth/drive']
                   
-        # Load credentials
         credentials = service_account.Credentials.from_service_account_file(
             creds_file, scopes=SCOPES
         )
         
-        # Build the sheets service
         sheets_service = build('sheets', 'v4', credentials=credentials)
         
-        # Build the drive service for permissions
         drive_service = build('drive', 'v3', credentials=credentials)
         
-        # Try to find existing sheet named "Fashion Data" if sheet_id is not provided
         if sheet_id is None:
             try:
-                # Search for existing sheet
                 results = drive_service.files().list(
                     q=f"name='{sheet_name}' and mimeType='application/vnd.google-apps.spreadsheet'",
                     fields="files(id, name)"
@@ -174,13 +159,11 @@ def load_to_google_sheets(df: pd.DataFrame,
                 items = results.get('files', [])
                 
                 if items:
-                    # Use the first matching sheet
                     sheet_id = items[0]['id']
                     print(f"Found existing sheet: {sheet_name} (ID: {sheet_id})")
             except Exception as e:
                 print(f"Error searching for existing sheet: {str(e)}")
         
-        # Create a new spreadsheet if needed
         if not sheet_id:
             spreadsheet = {
                 'properties': {
@@ -191,7 +174,6 @@ def load_to_google_sheets(df: pd.DataFrame,
             spreadsheet = sheets_service.spreadsheets().create(body=spreadsheet).execute()
             sheet_id = spreadsheet.get('spreadsheetId')
             
-            # Make the sheet publicly editable
             drive_service.permissions().create(
                 fileId=sheet_id,
                 body={
@@ -203,8 +185,8 @@ def load_to_google_sheets(df: pd.DataFrame,
             print(f"Created new sheet: {sheet_name} (ID: {sheet_id})")
         
         # Convert DataFrame to values for sheet
-        values = [df.columns.tolist()]  # Header row
-        values.extend(df.values.tolist())  # Data rows
+        values = [df.columns.tolist()]  
+        values.extend(df.values.tolist()) 
         
         # First, clear the existing content
         sheets_service.spreadsheets().values().clear(
@@ -212,12 +194,10 @@ def load_to_google_sheets(df: pd.DataFrame,
             range='Sheet1'
         ).execute()
         
-        # Body for the update request
         body = {
             'values': values
         }
         
-        # Update the sheet with data
         result = sheets_service.spreadsheets().values().update(
             spreadsheetId=sheet_id,
             range='Sheet1!A1',
@@ -239,7 +219,7 @@ def load_data(df: pd.DataFrame,
               csv_path: str = None, 
               load_to_gsheets: bool = True, 
               load_to_pg: bool = True,
-              credentials_path: str = 'google-sheets-api.json',  # Updated default to match your file
+              credentials_path: str = 'google-sheets-api.json',
               pg_config: dict = None,
               sheet_id: str = None) -> dict:
     """
@@ -259,12 +239,10 @@ def load_data(df: pd.DataFrame,
     """
     result = {}
     
-    # Save to CSV (now saving to products.csv by default)
     csv_path = csv_path or "products.csv"
     csv_output_path = load_to_csv(df, csv_path)
     result['csv_path'] = csv_output_path
     
-    # Save to Google Sheets if requested
     if load_to_gsheets:
         try:
             gsheet_url = load_to_google_sheets(df, credentials_path, sheet_name="Fashion Data", sheet_id=sheet_id)
@@ -273,10 +251,8 @@ def load_data(df: pd.DataFrame,
             print(f"Warning: Failed to save to Google Sheets. {str(e)}")
             result['gsheet_url'] = None
     
-    # Save to PostgreSQL if requested
     if load_to_pg:
         try:
-            # Use default or provided PostgreSQL config
             if pg_config is None:
                 pg_config = {
                     'host': 'localhost',

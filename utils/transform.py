@@ -15,7 +15,6 @@ def clean_data(raw_data: list) -> pd.DataFrame:
     cleaned_data = []
     
     for item in raw_data:
-        # Skip items with invalid titles or known invalid patterns
         if "Unknown Product" in item["Title"]:
             continue
         
@@ -25,23 +24,19 @@ def clean_data(raw_data: list) -> pd.DataFrame:
             continue
         
         try:
-            # Extract only the number from price text (assuming format like "$49.99")
             price_value = re.search(r'[\d.]+', price)
             if price_value:
-                # Convert to Rupiah (exchange rate: 16000)
                 price_idr = float(price_value.group()) * 16000
             else:
                 continue
         except:
             continue
         
-        # Clean rating
         rating = item["Rating"]
         if rating == "Invalid Rating" or rating == "Not Rated" or "Invalid Rating" in rating:
             continue
         
         try:
-            # Extract only the number from rating (assuming format like "4.8 / 5")
             rating_match = re.search(r'([\d.]+)', rating)
             rating_value = float(rating_match.group(1)) if rating_match else None
             if rating_value is None:
@@ -49,7 +44,6 @@ def clean_data(raw_data: list) -> pd.DataFrame:
         except:
             continue
         
-        # Clean colors (extract only the number)
         colors = item["Colors"]
         try:
             colors_match = re.search(r'(\d+)', colors)
@@ -73,13 +67,11 @@ def clean_data(raw_data: list) -> pd.DataFrame:
             "Colors": colors_value,
             "Size": size,
             "Gender": gender,
-            "timestamp": timestamp  # Include timestamp in cleaned data
+            "timestamp": timestamp 
         })
     
-    # Convert to DataFrame
     df = pd.DataFrame(cleaned_data)
     
-    # Ensure we have the target number of rows or less
     if len(df) > 1000:
         df = df.head(1000)
     
@@ -98,13 +90,10 @@ def transform_data(raw_data: list) -> pd.DataFrame:
         DataFrame with transformed data
     """
     df = clean_data(raw_data)
-    
-    # Add any additional transformations here if needed
-    
+        
     return df
 
 if __name__ == "__main__":
-    # For testing purposes
     from extract import extract_data
     
     raw_data = extract_data()
