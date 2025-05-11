@@ -1,0 +1,8 @@
+{
+    "host": "localhost",
+    "database": "fashion_db",
+    "user": "postgres",
+    "password": "postgres",
+    "port": "5432",
+    "table_name": "fashion_data"
+}

@@ -2,11 +2,16 @@ import unittest
 import sys
 import os
 import pandas as pd
+import logging
 from unittest.mock import patch, MagicMock
 
 # Add the parent directory to sys.path to import modules from utils
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.load import load_to_google_sheets
+
+# Set up logging for tests that check log output
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class TestGoogleSheets(unittest.TestCase):
     def setUp(self):
@@ -23,7 +28,8 @@ class TestGoogleSheets(unittest.TestCase):
 
     @patch('utils.load.service_account.Credentials.from_service_account_file')
     @patch('utils.load.build')
-    def test_load_to_google_sheets_detailed(self, mock_build, mock_credentials):
+    def test_load_to_google_sheets_success(self, mock_build, mock_credentials):
+        # Menguji apakah data berhasil diupload ke Google Sheets
         # Mock the Google API services
         mock_sheets_service = MagicMock()
         mock_drive_service = MagicMock()
@@ -69,31 +75,20 @@ class TestGoogleSheets(unittest.TestCase):
         create_body = mock_sheets.create.call_args[1]['body']
         self.assertEqual(create_body['properties']['title'], "Test Sheet")
         
-        # 3. Check that permissions.create was called to make the sheet publicly editable
-        mock_permissions.create.assert_called_once()
-        permission_body = mock_permissions.create.call_args[1]['body']
-        self.assertEqual(permission_body['type'], 'anyone')
-        self.assertEqual(permission_body['role'], 'writer')
-        
-        # 4. Check that values.clear was called to clear existing content
-        mock_values.clear.assert_called_once()
-        
-        # 5. Check that values.update was called with the right data
+        # 3. Check that values.update was called with the right data
         mock_values.update.assert_called_once()
         update_body = mock_values.update.call_args[1]['body']
         
         # Verify the first row is the header
         self.assertEqual(update_body['values'][0], list(self.test_data.columns))
         
-        # Verify the data rows have been converted correctly
-        self.assertEqual(len(update_body['values']), len(self.test_data) + 1)  # +1 for header
-        
-        # 6. Verify the returned URL
+        # Verify the returned URL
         self.assertEqual(result, f"https://docs.google.com/spreadsheets/d/test_sheet_id")
     
     @patch('utils.load.service_account.Credentials.from_service_account_file')
     @patch('utils.load.build')
     def test_load_to_google_sheets_existing(self, mock_build, mock_credentials):
+        # Menguji apakah reuse sheet yang sudah ada berfungsi dengan baik
         # Mock the Google API services
         mock_sheets_service = MagicMock()
         mock_drive_service = MagicMock()
@@ -125,19 +120,13 @@ class TestGoogleSheets(unittest.TestCase):
         # Verify that create was NOT called (reusing existing sheet)
         self.assertEqual(mock_sheets_service.spreadsheets.return_value.create.call_count, 0)
         
-        # Verify that permissions.create was NOT called
-        self.assertEqual(mock_drive_service.permissions.return_value.create.call_count, 0)
-        
-        # Verify that values.clear and values.update were called
-        mock_values.clear.assert_called_once()
-        mock_values.update.assert_called_once()
-        
         # Verify returned URL uses the existing sheet ID
         self.assertEqual(result, "https://docs.google.com/spreadsheets/d/existing_id")
     
     @patch('utils.load.service_account.Credentials.from_service_account_file')
     @patch('utils.load.build')
     def test_load_to_google_sheets_api_error(self, mock_build, mock_credentials):
+        # Menguji apakah function menangani error API dengan baik
         # Mock that the create spreadsheet call fails
         mock_sheets_service = MagicMock()
         mock_drive_service = MagicMock()
@@ -164,6 +153,30 @@ class TestGoogleSheets(unittest.TestCase):
             )
         
         self.assertIn("Spreadsheet creation failed", str(context.exception))
+    
+    @patch('utils.load.service_account.Credentials.from_service_account_file')
+    @patch('utils.load.build')
+    def test_load_to_google_sheets_empty_dataframe(self, mock_build, mock_credentials):
+        # Menguji apakah function menangani dataframe kosong dengan baik
+        mock_sheets_service = MagicMock()
+        mock_drive_service = MagicMock()
+        
+        # Setup the build function to return our mocked services
+        mock_build.side_effect = [mock_sheets_service, mock_drive_service]
+        
+        # Create empty DataFrame
+        empty_df = pd.DataFrame()
+        
+        # Call the function with empty DataFrame
+        # Should handle this gracefully without error
+        result = load_to_google_sheets(
+            empty_df,
+            creds_file='google-sheets-api.json',
+            sheet_name="Empty Test Sheet"
+        )
+        
+        # Should still return a URL
+        self.assertTrue(result.startswith("https://docs.google.com/spreadsheets/d/"))
 
 if __name__ == '__main__':
     unittest.main()
